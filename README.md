@@ -123,13 +123,13 @@ Ensure you have **Python 3.x** installed.
 
 ## 📞 Support & Contact
 
-If you find this project useful, please give it a ⭐️ on GitHub!
-
 *   **Name:** Shashank U
 *   **GitHub:** [Shashank-U-04](https://github.com/Shashank-U-04)
-*   **LinkedIn:** [Connect on LinkedIn](https://www.linkedin.com/in/shashank-u-04) 
+*   **LinkedIn:** [Connect on LinkedIn](https://www.linkedin.com/in/shashank-u-016b54330/) 
 
 ---
 <div align="center">
   Made with ❤️ by <a href="https://github.com/Shashank-U-04">Shashank U</a>
+  <br>
+  If you find this project useful, please give it a ⭐️ on GitHub!
 </div>
