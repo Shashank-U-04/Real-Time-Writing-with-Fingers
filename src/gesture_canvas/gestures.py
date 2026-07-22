@@ -1,0 +1,69 @@
+"""Gesture classification from a finger-up vector.
+
+Named predicates rather than inline index comparisons, so the main loop reads as
+intent and the priority order between overlapping gestures is stated in one
+place. Order matters: a pinch and a two-finger selection share fingers, so the
+more specific gesture must be tested first.
+"""
+
+from __future__ import annotations
+
+from enum import Enum
+
+#: Indices into the finger-up vector.
+THUMB, INDEX, MIDDLE, RING, PINKY = range(5)
+
+
+class Gesture(Enum):
+    """What the current hand pose means."""
+
+    NONE = "none"
+    RESIZE = "resize"
+    FILL = "fill"
+    SELECT = "select"
+    FIST = "fist"
+    DRAW = "draw"
+
+
+def _is_resize(f: list[int]) -> bool:
+    """Thumb and index extended, nothing else — a measuring pinch."""
+    return f[THUMB] == 1 and f[INDEX] == 1 and not any((f[MIDDLE], f[RING], f[PINKY]))
+
+
+def _is_fill(f: list[int]) -> bool:
+    """Index, middle and ring extended — the paint bucket."""
+    return f[INDEX] == 1 and f[MIDDLE] == 1 and f[RING] == 1 and f[PINKY] == 0
+
+
+def _is_select(f: list[int]) -> bool:
+    """Index and middle extended — move the cursor without drawing."""
+    return f[INDEX] == 1 and f[MIDDLE] == 1 and f[RING] == 0
+
+
+def _is_fist(f: list[int]) -> bool:
+    return not any(f)
+
+
+def _is_draw(f: list[int]) -> bool:
+    """Index alone — put ink down."""
+    return f[INDEX] == 1 and f[MIDDLE] == 0
+
+
+#: Evaluated in order; the first match wins.
+_RULES: tuple[tuple[Gesture, object], ...] = (
+    (Gesture.RESIZE, _is_resize),
+    (Gesture.FILL, _is_fill),
+    (Gesture.SELECT, _is_select),
+    (Gesture.FIST, _is_fist),
+    (Gesture.DRAW, _is_draw),
+)
+
+
+def classify(fingers: list[int]) -> Gesture:
+    """Map a five-element finger-up vector onto a gesture."""
+    if len(fingers) != 5:
+        return Gesture.NONE
+    for gesture, predicate in _RULES:
+        if predicate(fingers):
+            return gesture
+    return Gesture.NONE
