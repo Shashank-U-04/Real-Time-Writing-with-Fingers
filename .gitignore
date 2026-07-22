@@ -1,2 +1,15 @@
 __pycache__/
 *.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Local archives and generated output
+*.zip
+saved_drawing.png
+
+# Hand tracking model, downloaded automatically on first run
+assets/*.task
+assets/*.part
