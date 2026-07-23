@@ -18,6 +18,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from . import config
 from .backends import HandBackend, create_backend
 
 Landmark = list[int]  # [id, x, y]
@@ -47,8 +48,8 @@ class HandDetector:
         self,
         static_mode: bool = False,
         max_hands: int = 1,
-        detection_confidence: float = 0.75,
-        tracking_confidence: float = 0.75,
+        detection_confidence: float = config.DETECTION_CONFIDENCE,
+        tracking_confidence: float = config.TRACKING_CONFIDENCE,
         model_path: Path | None = None,
         backend: HandBackend | None = None,
     ) -> None:

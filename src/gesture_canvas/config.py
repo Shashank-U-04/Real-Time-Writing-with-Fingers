@@ -15,6 +15,18 @@ CAM_WIDTH: Final[int] = 1280
 CAM_HEIGHT: Final[int] = 720
 HEADER_HEIGHT: Final[int] = 100
 
+# ── Hand detection ───────────────────────────────────────────────────────────
+# The original HandTracking_GestureRecognition_Module ran MediaPipe at 0.5/0.5.
+# Tightening these to 0.75 made the tracker drop the hand in ordinary room
+# lighting, so the lenient originals are restored.
+DETECTION_CONFIDENCE: Final[float] = 0.5
+TRACKING_CONFIDENCE: Final[float] = 0.5
+
+#: Draw the hand skeleton over the feed, as the original module did by default.
+#: Seeing the landmarks is what distinguishes "hand not detected" from "gesture
+#: not recognised" — without it a failure to track is silent.
+SHOW_SKELETON: Final[bool] = True
+
 # ── Brush / eraser ranges ────────────────────────────────────────────────────
 MIN_BRUSH: Final[int] = 4
 MAX_BRUSH: Final[int] = 50

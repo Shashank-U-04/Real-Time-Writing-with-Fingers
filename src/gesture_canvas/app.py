@@ -103,7 +103,7 @@ class GestureCanvasApp:
         self.toolbar.tick()
         self.state.tick_timers()
 
-        self.detector.find_hands(frame, draw=False)
+        self.detector.find_hands(frame, draw=config.SHOW_SKELETON)
         landmarks, _ = self.detector.find_position(frame)
         self.state.hand_detected = len(landmarks) >= HandDetector.LANDMARK_COUNT
 
