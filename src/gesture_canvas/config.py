@@ -39,6 +39,12 @@ DEFAULT_ERASER: Final[int] = 70
 PINCH_MIN_DIST: Final[int] = 20
 PINCH_MAX_DIST: Final[int] = 200
 
+# Thumb-index tip distance (px) at or below which a thumb+index pose counts as a
+# deliberate pinch. The original vector had no thumb, so an incidentally raised
+# thumb never stopped you drawing; requiring the fingertips to be genuinely
+# close keeps resize available without stealing the writing pose.
+PINCH_ENGAGE_DIST: Final[float] = 60.0
+
 # ── Gesture stability ────────────────────────────────────────────────────────
 HOVER_DEBOUNCE: Final[int] = 5  # frames a hover must hold before it registers
 CLICK_COOLDOWN: Final[int] = 20  # frames locked out after a toolbar click

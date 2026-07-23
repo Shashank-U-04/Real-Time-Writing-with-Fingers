@@ -259,22 +259,35 @@ def test_selection_in_the_canvas_area_does_not_draw(app):
 
 
 # ── Resize ───────────────────────────────────────────────────────────────────
+def _engage_pinch(app):
+    """Spend one frame with the fingertips closed, which is what arms a resize.
+
+    A pinch must start closed so that a thumb resting open never hijacks the
+    drawing pose; once armed it stays armed while the pose is held.
+    """
+    app.detector.fingers = [1, 1, 0, 0, 0]
+    app._dispatch(blank_frame(), landmarks_at((500, 400), thumb_xy=(500, 430)))
+
+
+def _hold_pinch(app, thumb_xy, frames, index_xy=(500, 400)):
+    for _ in range(frames):
+        app._dispatch(blank_frame(), landmarks_at(index_xy, thumb_xy=thumb_xy))
+
+
 def test_pinch_resizes_the_brush(app):
     app.state.brush_thickness = 15
-    app.detector.fingers = [1, 1, 0, 0, 0]
 
-    for _ in range(config.RESIZE_DEBOUNCE + 3):
-        app._dispatch(blank_frame(), landmarks_at((500, 400), thumb_xy=(500, 580)))
+    _engage_pinch(app)
+    _hold_pinch(app, (500, 580), config.RESIZE_DEBOUNCE + 3)
 
     assert app.state.brush_thickness > 15
 
 
 def test_pinch_resizes_the_eraser_when_it_is_active(app):
     app.state.active_tool = "eraser"
-    app.detector.fingers = [1, 1, 0, 0, 0]
 
-    for _ in range(config.RESIZE_DEBOUNCE + 3):
-        app._dispatch(blank_frame(), landmarks_at((500, 400), thumb_xy=(500, 560)))
+    _engage_pinch(app)
+    _hold_pinch(app, (500, 560), config.RESIZE_DEBOUNCE + 3)
 
     assert config.MIN_ERASER <= app.state.eraser_thickness <= config.MAX_ERASER
     assert app.state.brush_thickness == config.DEFAULT_BRUSH
@@ -283,21 +296,54 @@ def test_pinch_resizes_the_eraser_when_it_is_active(app):
 def test_resize_ignores_the_first_few_frames(app):
     """Fingers pass through the pinch pose in transit; that must not resize."""
     app.state.brush_thickness = 15
-    app.detector.fingers = [1, 1, 0, 0, 0]
 
-    for _ in range(config.RESIZE_DEBOUNCE - 1):
-        app._dispatch(blank_frame(), landmarks_at((500, 400), thumb_xy=(500, 580)))
+    _engage_pinch(app)  # counts as the first frame of the debounce
+    _hold_pinch(app, (500, 580), config.RESIZE_DEBOUNCE - 2)
 
     assert app.state.brush_thickness == 15
 
 
 def test_resize_is_clamped_to_the_configured_range(app):
-    app.detector.fingers = [1, 1, 0, 0, 0]
-
-    for _ in range(config.RESIZE_DEBOUNCE + 3):
-        app._dispatch(blank_frame(), landmarks_at((100, 100), thumb_xy=(1200, 700)))
+    _engage_pinch(app)
+    _hold_pinch(app, (1200, 700), config.RESIZE_DEBOUNCE + 3, index_xy=(100, 100))
 
     assert app.state.brush_thickness <= config.MAX_BRUSH
+
+
+# ── The thumb must not steal the writing pose ────────────────────────────────
+def test_open_thumb_draws_instead_of_resizing(app):
+    """The old app ignored the thumb entirely; writing with it out must work."""
+    app.detector.fingers = [1, 1, 0, 0, 0]
+    for x in range(400, 700, 30):
+        app._dispatch(blank_frame(), landmarks_at((x, 400), thumb_xy=(x - 150, 520)))
+
+    assert app.layers.base.any(), "an open thumb blocked drawing"
+    assert app.state.brush_thickness == config.DEFAULT_BRUSH, "it resized instead"
+
+
+def test_spreading_an_engaged_pinch_keeps_resizing(app):
+    """Growing the brush means spreading the fingers; that must not start a stroke."""
+    _engage_pinch(app)
+    _hold_pinch(app, (500, 620), config.RESIZE_DEBOUNCE + 3)
+
+    assert app.state.brush_thickness > config.MIN_BRUSH
+    assert not app.layers.base.any(), "resize leaked ink onto the canvas"
+
+
+def test_releasing_the_pinch_disengages_it(app):
+    """After the pose ends, an open thumb must draw again rather than resize."""
+    _engage_pinch(app)
+    _hold_pinch(app, (500, 580), 3)
+
+    app.detector.fingers = [0, 1, 0, 0, 0]
+    app._dispatch(blank_frame(), landmarks_at((300, 300)))
+    assert not app._pinch_engaged
+
+    app.detector.fingers = [1, 1, 0, 0, 0]
+    for x in range(400, 700, 30):
+        app._dispatch(blank_frame(), landmarks_at((x, 400), thumb_xy=(x - 150, 520)))
+
+    assert app.layers.base.any()
 
 
 # ── AI snap ──────────────────────────────────────────────────────────────────

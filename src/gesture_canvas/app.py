@@ -56,6 +56,7 @@ class GestureCanvasApp:
         self._resize_frames = 0
         self._stable_frames = 0
         self._last_pinch: float | None = None
+        self._pinch_engaged = False
         self._erasing = False
         self._last_frame_time = time.time()
 
@@ -144,7 +145,16 @@ class GestureCanvasApp:
         index = (landmarks[INDEX_TIP][1], landmarks[INDEX_TIP][2])
         middle = (landmarks[MIDDLE_TIP][1], landmarks[MIDDLE_TIP][2])
         thumb = (landmarks[THUMB_TIP][1], landmarks[THUMB_TIP][2])
-        gesture = classify(self.detector.fingers_up())
+
+        # A pinch has to *start* closed to count, but must stay engaged once it
+        # has: sizing the brush up means spreading the fingers, and re-checking
+        # the distance every frame would drop out of resize and start drawing.
+        pinch = float(np.hypot(index[0] - thumb[0], index[1] - thumb[1]))
+        gesture = classify(
+            self.detector.fingers_up(),
+            pinch_distance=None if self._pinch_engaged else pinch,
+        )
+        self._pinch_engaged = gesture is Gesture.RESIZE
 
         self.toolbar.hover.update(*index)
         in_header = index[1] < config.HEADER_HEIGHT
@@ -394,6 +404,7 @@ class GestureCanvasApp:
         self._resize_frames = 0
         self._stable_frames = 0
         self._last_pinch = None
+        self._pinch_engaged = False
 
     # ── Presentation ─────────────────────────────────────────────────────────
     def _draw_overlays(self, frame: np.ndarray, cursor: tuple[int, int] | None) -> None:

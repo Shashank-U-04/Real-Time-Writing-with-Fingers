@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from enum import Enum
 
+from . import config
+
 #: Indices into the finger-up vector.
 THUMB, INDEX, MIDDLE, RING, PINKY = range(5)
 
@@ -72,11 +74,30 @@ _RULES: tuple[tuple[Gesture, object], ...] = (
 )
 
 
-def classify(fingers: list[int]) -> Gesture:
-    """Map a five-element finger-up vector onto a gesture."""
+def classify(fingers: list[int], pinch_distance: float | None = None) -> Gesture:
+    """Map a five-element finger-up vector onto a gesture.
+
+    ``pinch_distance`` is the thumb-to-index tip distance in pixels. It
+    disambiguates the one pose the original app and this one disagree on:
+    thumb+index extended was *drawing* originally (the thumb was not tracked at
+    all) but reads as a resize pinch here. Only a genuinely closed pinch resizes;
+    a thumb merely resting open leaves you drawing, as it used to.
+
+    Passing ``None`` means "distance unknown" and keeps the pose-only reading,
+    which is what the gesture table describes.
+    """
     if len(fingers) != 5:
         return Gesture.NONE
+
     for gesture, predicate in _RULES:
-        if predicate(fingers):
-            return gesture
+        if not predicate(fingers):
+            continue
+        if gesture is Gesture.RESIZE and not _pinch_engaged(pinch_distance):
+            continue  # thumb is incidental — fall through to the drawing rule
+        return gesture
     return Gesture.NONE
+
+
+def _pinch_engaged(distance: float | None) -> bool:
+    """True when the fingertips are close enough to mean a deliberate pinch."""
+    return distance is None or distance <= config.PINCH_ENGAGE_DIST
