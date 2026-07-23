@@ -73,8 +73,11 @@ def drag(app, points, fingers=(0, 1, 0, 0, 0)):
 
 
 def lift(app):
-    """Return to a neutral pose, ending the current stroke."""
-    app.detector.fingers = [0, 1, 1, 1, 1]
+    """Return to a neutral pose, ending the current stroke.
+
+    Four fingers up is the eraser, so a pose that maps to no gesture is used.
+    """
+    app.detector.fingers = [0, 0, 0, 0, 1]
     app._dispatch(blank_frame(), landmarks_at((900, 650)))
 
 
@@ -138,6 +141,71 @@ def test_no_hand_ends_the_stroke(app):
 
     assert not app.state.stroke_started
     assert len(app.state.current_stroke) > 2
+
+
+# ── Four-finger gesture eraser ───────────────────────────────────────────────
+FOUR_FINGERS = (0, 1, 1, 1, 1)
+
+
+def _erase_at(app, point, frames=1):
+    """Hold the four-finger pose with the *middle* fingertip on ``point``."""
+    app.detector.fingers = list(FOUR_FINGERS)
+    for _ in range(frames):
+        app._dispatch(blank_frame(), landmarks_at((point[0] - 30, point[1]), middle_xy=point))
+
+
+def test_four_fingers_erase_existing_ink(app):
+    drag(app, [(400, 300), (600, 300)])
+    assert app.layers.base.any()
+
+    _erase_at(app, (500, 300))
+
+    assert not app.layers.base[295:305, 495:505].any()
+
+
+def test_gesture_eraser_does_not_change_the_selected_tool(app):
+    """Unlike the toolbar eraser, the pose is transient — brush stays selected."""
+    _erase_at(app, (500, 300))
+    assert app.state.active_tool == "brush"
+
+
+def test_gesture_erase_is_undoable(app):
+    drag(app, [(400, 300), (600, 300)])
+    lift(app)
+    before = app.layers.base.copy()
+
+    _erase_at(app, (500, 300))
+    app._undo()
+
+    assert np.array_equal(app.layers.base, before)
+
+
+def test_continuous_erase_pushes_one_undo_entry(app):
+    """Holding the pose is one undo step, not one per frame."""
+    drag(app, [(400, 300), (600, 300)])
+    lift(app)
+    assert len(app.undo) == 1
+
+    _erase_at(app, (500, 300), frames=6)
+
+    assert len(app.undo) == 2
+
+
+def test_erasing_is_blocked_inside_the_header(app):
+    import cv2
+    cv2.circle(app.layers.base, (500, 40), 30, RED, cv2.FILLED)
+    before = app.layers.base.copy()
+
+    _erase_at(app, (500, 40))
+
+    assert np.array_equal(app.layers.base, before)
+
+
+def test_erase_ends_an_in_progress_stroke(app):
+    drag(app, [(400, 300), (500, 300)])
+    _erase_at(app, (900, 650))
+
+    assert not app.state.stroke_started
 
 
 # ── Toolbar selection ────────────────────────────────────────────────────────

@@ -56,6 +56,7 @@ class GestureCanvasApp:
         self._resize_frames = 0
         self._stable_frames = 0
         self._last_pinch: float | None = None
+        self._erasing = False
         self._last_frame_time = time.time()
 
     # ── Lifecycle ────────────────────────────────────────────────────────────
@@ -136,6 +137,7 @@ class GestureCanvasApp:
             self._end_stroke()
             self._reset_resize()
             self.state.fist_count = 0
+            self._erasing = False
             self.toolbar.hover.clear()
             return None
 
@@ -153,9 +155,13 @@ class GestureCanvasApp:
             self.state.fist_count = 0
         if gesture is not Gesture.DRAW:
             self._end_stroke()
+        if gesture is not Gesture.ERASE:
+            self._erasing = False
 
         if gesture is Gesture.RESIZE:
             self._handle_resize(frame, thumb, index)
+        elif gesture is Gesture.ERASE:
+            self._handle_erase(frame, middle)
         elif gesture is Gesture.FILL:
             self._handle_fill(frame, index)
         elif gesture is Gesture.SELECT:
@@ -209,6 +215,26 @@ class GestureCanvasApp:
             tool, swatch = self.toolbar.click(*index)
             if tool is not None:
                 self._apply_selection(tool, swatch)
+
+    def _handle_erase(self, frame: np.ndarray, middle: tuple[int, int]) -> None:
+        """The original four-finger eraser: a circle stamped at the middle fingertip.
+
+        Kept distinct from the toolbar eraser, which strokes between successive
+        points. This one stamps a single disc per frame exactly as the original
+        `Deploy.py` did, and does not disturb the selected tool.
+        """
+        radius = max(self.state.eraser_thickness // 2, 1)
+        cv2.circle(frame, middle, radius, (235, 235, 235), 2, cv2.LINE_AA)
+        if middle[1] <= config.HEADER_HEIGHT:
+            return
+
+        # One undo entry per continuous erase, matching how strokes behave. The
+        # original pushed no history at all, which made erasing unrecoverable.
+        if not self._erasing:
+            self.undo.push(self.layers.snapshot())
+            self._erasing = True
+
+        cv2.circle(self.layers.base, middle, radius, (0, 0, 0), cv2.FILLED)
 
     def _handle_fill(self, frame: np.ndarray, index: tuple[int, int]) -> None:
         if index[1] <= config.HEADER_HEIGHT:

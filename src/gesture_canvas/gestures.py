@@ -19,6 +19,7 @@ class Gesture(Enum):
 
     NONE = "none"
     RESIZE = "resize"
+    ERASE = "erase"
     FILL = "fill"
     SELECT = "select"
     FIST = "fist"
@@ -28,6 +29,17 @@ class Gesture(Enum):
 def _is_resize(f: list[int]) -> bool:
     """Thumb and index extended, nothing else — a measuring pinch."""
     return f[THUMB] == 1 and f[INDEX] == 1 and not any((f[MIDDLE], f[RING], f[PINKY]))
+
+
+def _is_erase(f: list[int]) -> bool:
+    """All four fingers extended — the original project's eraser.
+
+    The thumb is deliberately ignored: the original finger vector did not
+    include it, so a flat hand erases whether or not the thumb is tucked. That
+    also means a fully relaxed open palm erases, which is exactly how the
+    original behaved.
+    """
+    return all((f[INDEX], f[MIDDLE], f[RING], f[PINKY]))
 
 
 def _is_fill(f: list[int]) -> bool:
@@ -52,6 +64,7 @@ def _is_draw(f: list[int]) -> bool:
 #: Evaluated in order; the first match wins.
 _RULES: tuple[tuple[Gesture, object], ...] = (
     (Gesture.RESIZE, _is_resize),
+    (Gesture.ERASE, _is_erase),
     (Gesture.FILL, _is_fill),
     (Gesture.SELECT, _is_select),
     (Gesture.FIST, _is_fist),
