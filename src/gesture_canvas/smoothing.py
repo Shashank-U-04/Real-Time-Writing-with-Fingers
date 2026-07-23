@@ -22,10 +22,12 @@ class CursorSmoother:
         alpha_slow: float = config.ALPHA_SLOW,
         alpha_fast: float = config.ALPHA_FAST,
         speed_scale: float = config.SMOOTHING_SPEED_SCALE,
+        enabled: bool = config.SMOOTHING_ENABLED,
     ) -> None:
         self.alpha_slow = alpha_slow
         self.alpha_fast = alpha_fast
         self.speed_scale = speed_scale
+        self.enabled = enabled
         self._x: float | None = None
         self._y: float | None = None
         self._last_raw: tuple[float, float] | None = None
@@ -42,6 +44,11 @@ class CursorSmoother:
 
     def update(self, raw_x: float, raw_y: float) -> tuple[int, int]:
         """Feed a raw fingertip position, get the smoothed position back."""
+        # Passthrough reproduces the original behaviour exactly: the fingertip
+        # coordinate goes to the canvas untouched, so the ink cannot lag.
+        if not self.enabled:
+            return int(raw_x), int(raw_y)
+
         if self._x is None or self._y is None or self._last_raw is None:
             self._x, self._y = float(raw_x), float(raw_y)
             self._last_raw = (float(raw_x), float(raw_y))

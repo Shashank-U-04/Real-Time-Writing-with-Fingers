@@ -52,6 +52,13 @@ ALPHA_SLOW: Final[float] = 0.18
 ALPHA_FAST: Final[float] = 0.55
 SMOOTHING_SPEED_SCALE: Final[float] = 40.0
 
+# Off by default: the original drew straight from the raw fingertip, and this is
+# a handwriting tool. Handwriting sits near 10 px/frame, which the adaptive
+# filter treats as "slow" and damps hard — measured at ~24 px of lag behind the
+# finger and ~19% of loop height lost, which is what makes letters unwritable.
+# Enable it only if MediaPipe jitter on slow strokes bothers you more than lag.
+SMOOTHING_ENABLED: Final[bool] = False
+
 # ── Undo / feedback ──────────────────────────────────────────────────────────
 UNDO_DEPTH: Final[int] = 25
 AI_RESULT_FRAMES: Final[int] = 200
